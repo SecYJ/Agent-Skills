@@ -13,6 +13,31 @@ const updateUserMutation = useMutation({
 Prefer invalidating queries with the same `queryOptions` factory used by query consumers.
 
 ```ts
+const updateUserMutation = useMutation({
+	mutationFn: updateUser,
+	onSuccess: async (_1, _2, _3, context) => {
+		await context.client.invalidateQueries(usersQueryOptions(filters));
+	},
+});
+```
+
+This keeps the mutation aligned with the query's single source of truth. The mutation does not need to rebuild the query key by hand, so query consumers, route loaders, prefetching, and invalidation all point at the same query definition.
+
+## Check context.client Support
+
+Get the installed `@tanstack/react-query` package version before using `context.client` in mutation callbacks, for example with `pnpm list @tanstack/react-query --depth 0` from the package root. Mutation callback context, including `context.client`, is supported in v5.89.0 and later.
+
+The context parameter is fourth for `onSuccess` and `onError`, and fifth for `onSettled`:
+
+```ts
+onSuccess: (_1, _2, _3, context) => context.client.invalidateQueries(options),
+onError: (_1, _2, _3, context) => context.client.invalidateQueries(options),
+onSettled: (_1, _2, _3, _4, context) => context.client.invalidateQueries(options),
+```
+
+For versions earlier than v5.89.0, initialize the client with `useQueryClient` and close over it in the callbacks instead:
+
+```ts
 const queryClient = useQueryClient();
 
 const updateUserMutation = useMutation({
@@ -22,8 +47,6 @@ const updateUserMutation = useMutation({
 	},
 });
 ```
-
-This keeps the mutation aligned with the query's single source of truth. The mutation does not need to rebuild the query key by hand, so query consumers, route loaders, prefetching, and invalidation all point at the same query definition.
 
 ## Keep isPending True During Invalidation
 
@@ -34,8 +57,8 @@ Use `async`/`await`:
 ```ts
 const updateUserMutation = useMutation({
 	mutationFn: updateUser,
-	onSuccess: async () => {
-		await queryClient.invalidateQueries(usersQueryOptions(filters));
+	onSuccess: async (_1, _2, _3, context) => {
+		await context.client.invalidateQueries(usersQueryOptions(filters));
 	},
 });
 ```
@@ -45,7 +68,8 @@ Or return the promise directly:
 ```ts
 const updateUserMutation = useMutation({
 	mutationFn: updateUser,
-	onSuccess: () => queryClient.invalidateQueries(usersQueryOptions(filters)),
+	onSuccess: (_1, _2, _3, context) =>
+		context.client.invalidateQueries(usersQueryOptions(filters)),
 });
 ```
 
@@ -56,12 +80,10 @@ Both forms tell React Query to wait for the invalidation promise to resolve befo
 Use mutation variables when the invalidated query depends on the mutated record.
 
 ```ts
-const queryClient = useQueryClient();
-
 const updateUserMutation = useMutation({
 	mutationFn: updateUser,
-	onSuccess: async (_data, variables) => {
-		await queryClient.invalidateQueries(userQueryOptions(variables.userId));
+	onSuccess: async (_1, variables, _3, context) => {
+		await context.client.invalidateQueries(userQueryOptions(variables.userId));
 	},
 });
 ```
@@ -71,10 +93,10 @@ Invalidate the list query too when the mutation can change list membership, sort
 ```ts
 const updateUserMutation = useMutation({
 	mutationFn: updateUser,
-	onSuccess: async (_data, variables) => {
+	onSuccess: async (_1, variables, _3, context) => {
 		await Promise.all([
-			queryClient.invalidateQueries(userQueryOptions(variables.userId)),
-			queryClient.invalidateQueries(usersQueryOptions(filters)),
+			context.client.invalidateQueries(userQueryOptions(variables.userId)),
+			context.client.invalidateQueries(usersQueryOptions(filters)),
 		]);
 	},
 });
@@ -107,10 +129,10 @@ const updateUserStatusMutation = useMutation({
 
 		return { previousUsers };
 	},
-	onError: (_error, _variables, onMutateResult, context) => {
+	onError: (_1, _2, onMutateResult, context) => {
 		context.client.setQueryData(usersQueryOptions(filters).queryKey, onMutateResult?.previousUsers);
 	},
-	onSettled: async (_data, error, _variables, _onMutateResult, context) => {
+	onSettled: async (_1, error, _3, _4, context) => {
 		if (error) {
 			// do something
 		}

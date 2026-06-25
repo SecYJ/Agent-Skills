@@ -85,6 +85,31 @@ const usersQuery = useQuery(usersQueryOptions(filters));
 const usersQuery = useSuspenseQuery(usersQueryOptions(filters));
 ```
 
+Use `useSuspenseQueries` to read several factories in parallel under one Suspense boundary, then merge them with `combine`. Because every query suspends, the `combine` callback always receives settled results, so it can read `data` without guarding for loading.
+
+```ts
+const { users, posts } = useSuspenseQueries({
+	queries: [usersQueryOptions(filters), postsQueryOptions()],
+	combine: ([usersResult, postsResult]) => ({
+		users: usersResult.data.users,
+		posts: postsResult.data.posts,
+	}),
+});
+```
+
+Keep `combine` pure and return a stable derived value so TanStack Query can memoize the result and skip re-renders when the underlying data is unchanged. This also scales to a dynamic list of queries, where `combine` is the only clean way to fold the array into one value.
+
+```ts
+const activeUsers = useSuspenseQueries({
+	queries: filterGroups.map((filters) => usersQueryOptions(filters)),
+	combine: (results) => {
+		const users = results.flatMap((result) => result.data.users);
+
+		return users.filter((user) => user.status === "active");
+	},
+});
+```
+
 ## Query Client Operations
 
 Reuse the same factory for imperative query client operations.

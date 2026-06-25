@@ -30,9 +30,9 @@ Get the installed `@tanstack/react-query` package version before using `context.
 The context parameter is fourth for `onSuccess` and `onError`, and fifth for `onSettled`:
 
 ```ts
-onSuccess: (_1, _2, _3, context) => context.client.invalidateQueries(options),
-onError: (_1, _2, _3, context) => context.client.invalidateQueries(options),
-onSettled: (_1, _2, _3, _4, context) => context.client.invalidateQueries(options),
+onSuccess: (_data, _variables, onMutateResult, context) => context.client.invalidateQueries(options),
+onError: (_data, _variables, onMutateResult, context) => context.client.invalidateQueries(options),
+onSettled: (_data, _error, _variables, onMutateResult, context) => context.client.invalidateQueries(options),
 ```
 
 For versions earlier than v5.89.0, initialize the client with `useQueryClient` and close over it in the callbacks instead:
@@ -68,8 +68,7 @@ Or return the promise directly:
 ```ts
 const updateUserMutation = useMutation({
 	mutationFn: updateUser,
-	onSuccess: (_1, _2, _3, context) =>
-		context.client.invalidateQueries(usersQueryOptions(filters)),
+	onSuccess: (_1, _2, _3, context) => context.client.invalidateQueries(usersQueryOptions(filters)),
 });
 ```
 
@@ -120,9 +119,7 @@ const updateUserStatusMutation = useMutation({
 			return {
 				...previous,
 				items: previous.items.map((user) =>
-					user.id === variables.userId
-						? { ...user, status: variables.status }
-						: user,
+					user.id === variables.userId ? { ...user, status: variables.status } : user,
 				),
 			};
 		});

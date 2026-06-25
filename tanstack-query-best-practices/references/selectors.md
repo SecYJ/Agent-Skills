@@ -17,7 +17,7 @@ With React Compiler, inline the selector function inside `useSuspenseQuery`. Do 
 function ActiveUserCount() {
 	const activeUserCountQuery = useSuspenseQuery({
 		...usersQueryOptions(filters),
-		select: (data: UsersResult) => {
+		select: (data) => {
 			return data.activeCount;
 		},
 	});

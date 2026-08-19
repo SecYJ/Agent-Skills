@@ -10,15 +10,18 @@ import { ErrorComponent, createFileRoute, useRouter } from "@tanstack/react-rout
 import { usersQueryOptions } from "@/features/users/services/queries";
 
 export const Route = createFileRoute("/users")({
-	loader: ({ context: { queryClient } }) => {
-		queryClient.ensureQueryData(usersQueryOptions());
-	},
+	context: () => ({
+		usersQueryOptions: usersQueryOptions(),
+	}),
+	loader: ({ context }) =>
+		context.queryClient.ensureQueryData(context.usersQueryOptions),
 	errorComponent: UsersError,
 	component: UsersPage,
 });
 
 function UsersPage() {
-	const { data } = useSuspenseQuery(usersQueryOptions());
+	const { usersQueryOptions } = Route.useRouteContext();
+	const { data } = useSuspenseQuery(usersQueryOptions);
 
 	return <UsersList users={data.users} />;
 }
@@ -97,7 +100,8 @@ loading state, put it in the route pending component or a Suspense fallback.
 
 ```tsx
 const UsersPage = () => {
-	const { data } = useSuspenseQuery(usersQueryOptions());
+	const { usersQueryOptions } = Route.useRouteContext();
+	const { data } = useSuspenseQuery(usersQueryOptions);
 
 	return <UsersList users={data.users} />;
 };

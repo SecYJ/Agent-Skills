@@ -1,6 +1,8 @@
 # queryOptions Usage
 
-Define a `queryOptions` factory for each reusable query.
+Define a `queryOptions` factory for each reusable query. Reuse it in components,
+loaders, mutations, and cache operations instead of rebuilding query keys or
+query functions.
 
 ```ts
 import { queryOptions } from "@tanstack/react-query";
@@ -15,11 +17,11 @@ export const usersQueryOptions = (filters: UserFilters) =>
 	});
 ```
 
-The factory becomes the single source of truth for the query because the `queryKey`, `queryFn`, and default query behavior live in one place. Components, loaders, mutations, and cache operations all reuse the same options instead of rebuilding matching keys by hand.
-
 ## Query Factory Object
 
-Use a query factory object when a feature owns multiple related queries. The object is the single source of truth for the feature's query keys and `queryOptions`, following the query-factory structure while keeping TanStack Query's `queryOptions` type inference.
+Use a query factory object when a feature owns multiple related queries. Keep
+prefix keys and complete query options together while preserving `queryOptions`
+type inference.
 
 ```ts
 import { queryOptions } from "@tanstack/react-query";
@@ -52,40 +54,31 @@ export const userQueries = {
 };
 ```
 
-Keep key-only helpers and full query option helpers on the same object:
-
-- Use prefix key helpers such as `userQueries.all()`, `userQueries.lists()`, and `userQueries.details()` for broad cache matching.
-- Use `queryOptions` helpers such as `userQueries.list(filters)` and `userQueries.detail(userId)` for reads, prefetching, cache seeding, invalidation, refetching, and cancellation.
-- Use `.queryKey` from the `queryOptions` helper only when an API needs a key instead of a full options object, such as `getQueryData` or `setQueryData`.
-- Do not export duplicate standalone keys or compatibility `usersQueryOptions` functions once the object factory is the public API.
+- Use prefix helpers such as `all()`, `lists()`, and `details()` for broad cache
+  matching.
+- Use complete options such as `list(filters)` and `detail(userId)` everywhere
+  else. Read `.queryKey` only when an API requires a key.
+- Expose one public factory API instead of duplicate standalone keys and option
+  factories.
 
 ```ts
 const usersQuery = useSuspenseQuery(userQueries.list(filters));
-```
-
-```ts
-await queryClient.invalidateQueries({
-	queryKey: userQueries.all(),
-});
-```
-
-```ts
+await queryClient.invalidateQueries({ queryKey: userQueries.all() });
 const user = queryClient.getQueryData(userQueries.detail(userId).queryKey);
 ```
 
 ## Consumers
 
-Use the factory anywhere the query is read.
+Use the same factory with regular and Suspense consumers.
 
 ```ts
 const usersQuery = useQuery(usersQueryOptions(filters));
+const suspenseUsersQuery = useSuspenseQuery(usersQueryOptions(filters));
 ```
 
-```ts
-const usersQuery = useSuspenseQuery(usersQueryOptions(filters));
-```
-
-Use `useSuspenseQueries` to read several factories in parallel under one Suspense boundary, then merge them with `combine`. Because every query suspends, the `combine` callback always receives settled results, so it can read `data` without guarding for loading.
+Use `useSuspenseQueries` with `combine` to read and merge several queries under
+one Suspense boundary. The results are settled, so `combine` can read `data`
+without loading guards.
 
 ```ts
 const { users, posts } = useSuspenseQueries({
@@ -97,40 +90,21 @@ const { users, posts } = useSuspenseQueries({
 });
 ```
 
-Keep `combine` pure and return a stable derived value so TanStack Query can memoize the result and skip re-renders when the underlying data is unchanged. This also scales to a dynamic list of queries, where `combine` is the only clean way to fold the array into one value.
-
-```ts
-const activeUsers = useSuspenseQueries({
-	queries: filterGroups.map((filters) => usersQueryOptions(filters)),
-	combine: (results) => {
-		const users = results.flatMap((result) => result.data.users);
-
-		return users.filter((user) => user.status === "active");
-	},
-});
-```
+Keep `combine` pure and return stable derived values. It can also fold a dynamic
+queries array into one result.
 
 ## Query Client Operations
 
-Reuse the same factory for imperative query client operations.
+Pass complete options when the API accepts them. Use `.queryKey` only for
+key-only APIs such as `getQueryData` and `setQueryData`.
 
 ```ts
 await queryClient.invalidateQueries(usersQueryOptions(filters));
-```
-
-```ts
 await queryClient.refetchQueries(usersQueryOptions(filters));
-```
-
-```ts
 await queryClient.cancelQueries(usersQueryOptions(filters));
-```
 
-```ts
 const data = queryClient.getQueryData(usersQueryOptions(filters).queryKey);
-```
 
-```ts
 queryClient.setQueryData(usersQueryOptions(filters).queryKey, (previous) => {
 	if (!previous) return previous;
 
@@ -139,12 +113,7 @@ queryClient.setQueryData(usersQueryOptions(filters).queryKey, (previous) => {
 		activeCount: previous.items.filter((user) => user.status === "active").length,
 	};
 });
-```
 
-```ts
 await queryClient.ensureQueryData(usersQueryOptions(filters));
-```
-
-```ts
 queryClient.prefetchQuery(usersQueryOptions(filters));
 ```

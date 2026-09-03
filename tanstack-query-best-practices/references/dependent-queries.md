@@ -1,32 +1,32 @@
 # Dependent Query Usage
 
-Use `enabled` when a query must wait for a required input.
+Use `enabled` when a query must wait for a required input. Include that input in
+the query key and guard the query function so its type remains safe.
 
 ```ts
-import { queryOptions, useQuery } from "@tanstack/react-query";
-
-import { getUser } from "./api";
-
-export const userQueryOptions = (userId: string) =>
-	queryOptions({
+export function userQueryOptions(userId?: string) {
+	return queryOptions({
 		queryKey: ["users", userId],
-		queryFn: () => getUser(userId),
-	});
+		queryFn() {
+			if (!userId) throw new Error("userId is required");
 
-const UserDetails = ({ userId }: { userId?: string }) => {
-	const userQuery = useQuery({
-		...userQueryOptions(userId ?? ""),
-		enabled: Boolean(userId),
+			return getUser(userId);
+		},
 	});
+}
 
-	return <UserProfile user={userQuery.data} />;
-};
+const userQuery = useQuery({
+	...userQueryOptions(userId),
+	enabled: Boolean(userId),
+});
 ```
+
+Use `useQuery` for queries that can be disabled. Reserve `useSuspenseQuery` for
+queries whose required inputs are already available.
 
 ## Dependent On Another Query
 
-Include the derived input in the dependent query key and keep the query disabled
-until the input exists.
+Pass the value produced by the first query into the dependent query options.
 
 ```ts
 const currentUserQuery = useSuspenseQuery(currentUserQueryOptions());
@@ -38,22 +38,14 @@ const managerQuery = useQuery({
 });
 ```
 
-Use `useQuery` for a disabled query because `useSuspenseQuery` is intended for
-queries that can run immediately.
+## Modal And Drawer Queries
 
-```ts
-const { userId } = Route.useParams();
-
-const { data } = useSuspenseQuery(userQueryOptions(userId));
-```
-
-## Modal And Drawer Preview Queries
-
-Gate preview queries behind the UI state that makes them visible.
+Include visibility in `enabled` when a query should run only while its UI is
+open.
 
 ```ts
 const userPreviewQuery = useQuery({
-	...userQueryOptions(selectedUserId ?? ""),
+	...userQueryOptions(selectedUserId),
 	enabled: open && Boolean(selectedUserId),
 });
 ```

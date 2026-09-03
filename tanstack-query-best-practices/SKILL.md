@@ -11,7 +11,7 @@ Load only the reference file that matches the task:
 - `references/selectors.md` for `select`, selected subscriptions, selector function placement, and derived query slices.
 - `references/mutations.md` for `useMutation`, mutation options, invalidation, optimistic updates, and mutation side effects.
 - `references/mutation-state.md` for `mutationOptions`, `mutationKey`, `useMutationState`, `useIsMutating`, and observing mutation state outside the mutation owner.
-- `references/router.md` for TanStack Query usage with TanStack Router, including building concrete query options from `loaderDeps`, sharing them through route context, handling blocking and intentional non-blocking loader promises, and keeping search-param UI logic in `useSearch`.
+- `references/router.md` for TanStack Query usage with TanStack Router, including building concrete query options from `loaderDeps`, sharing them through route context, and handling loader query promises.
 - `references/dependent-queries.md` for `enabled`, conditional queries, dependent queries, required query inputs, and modal/drawer-gated fetching.
 - `references/suspense-error-handling.md` for Suspense query errors, route error boundaries, query reset behavior, retries, and `router.invalidate()`.
 - `references/infinite-queries.md` for `infiniteQueryOptions`, `useSuspenseInfiniteQuery`, page params, pagination cursors, and infinite query invalidation.

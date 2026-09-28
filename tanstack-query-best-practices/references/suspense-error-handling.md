@@ -1,31 +1,28 @@
 # Suspense Error Handling
 
-Let Suspense handle loading for `useSuspenseQuery`. Let the nearest route error
-boundary handle thrown query errors.
+Suspense handles loading for `useSuspenseQuery`; the nearest error boundary handles thrown errors. Connect Query's reset to whichever boundary catches the error. Do not add a second boundary just to reset.
+
+## Loading
+
+Do not add `isLoading` branches around `useSuspenseQuery`. Rely on the route `pendingComponent` or a parent `<Suspense fallback>`; add one only if none exists.
 
 ## Route Error Boundaries
 
+Reset Query's error boundary when the route `errorComponent` mounts, so failed queries can refetch on the next render, including after navigating away and back. Retry with `router.invalidate()` to rerun loaders and reset the route boundary.
+
 ```tsx
 export const Route = createFileRoute("/users")({
-	context() {
-		return { usersQueryOptions: usersQueryOptions() };
-	},
-	loader({ context }) {
-		context.queryClient.ensureQueryData(context.usersQueryOptions);
-	},
+	// context, loader, component: see router.md
 	errorComponent: UsersError,
-	component: UsersPage,
 });
 
-function UsersPage() {
-	const { usersQueryOptions } = Route.useRouteContext();
-	const { data } = useSuspenseQuery(usersQueryOptions);
-
-	return <UsersList users={data.users} />;
-}
-
-function UsersError({ error }: { error: Error }) {
+function UsersError({ error }: ErrorComponentProps) {
 	const router = useRouter();
+	const queryErrorResetBoundary = useQueryErrorResetBoundary();
+
+	useEffect(() => {
+		queryErrorResetBoundary.reset();
+	}, [queryErrorResetBoundary]);
 
 	return (
 		<div>
@@ -38,23 +35,9 @@ function UsersError({ error }: { error: Error }) {
 }
 ```
 
-Use `router.invalidate()` for route-level retries so active loaders run again.
-
-## Loading Fallback
-
-Do not add `isLoading` branches around `useSuspenseQuery`. Use the route pending
-component or a Suspense fallback when a parent does not already provide one.
-
-```tsx
-<Suspense fallback={<UsersSkeleton />}>
-	<UsersPage />
-</Suspense>
-```
-
 ## Local Error Boundaries
 
-Use `QueryErrorResetBoundary` when a local React error boundary, rather than a
-route error boundary, catches a Suspense query error.
+When a local React error boundary catches the error, wire `QueryErrorResetBoundary`'s `reset` into its `onReset`.
 
 ```tsx
 <QueryErrorResetBoundary>
@@ -75,6 +58,3 @@ route error boundary, catches a Suspense query error.
 	)}
 </QueryErrorResetBoundary>
 ```
-
-Keep reset ownership with the boundary that catches the error: route errors use
-the router, while local errors use `QueryErrorResetBoundary`.

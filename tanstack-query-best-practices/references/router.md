@@ -1,31 +1,12 @@
 # Usage With TanStack Router
 
-## Prefer Suspense Query Consumers
+With TanStack Router, prefer `useSuspenseQuery` for route data. Build concrete query options in route `context`, seed the cache in `loader`, and read them in the component. Loader and component then share one cache entry, and the component never rebuilds options from route inputs.
 
-For route-owned page data, use `useSuspenseQuery` and let the route loader seed
-the TanStack Query cache. The component should consume the concrete query
-options exposed by route context instead of rebuilding them from route inputs.
+When a component needs more than one route query, use `useSuspenseQueries` instead of several `useSuspenseQuery` calls (see query-options.md).
 
-## Prefer A Plain `ensureQueryData` Call In Loaders
-
-Usually call `queryClient.ensureQueryData(...)` directly without returning it,
-awaiting it, or using `void`. If a loader must await query work, use
-`await Promise.all([...])`.
-
-## Build Concrete Query Options From `loaderDeps`
-
-When a query depends on search params, select the relevant values with
-`loaderDeps` and use them with path params to build the query options in
-`context`. Reuse those options in the loader and component so both request the
-same cache entry.
+Select search-param inputs with `loaderDeps` and combine them with path params in `context`.
 
 ```tsx
-import { useSuspenseQuery } from "@tanstack/react-query";
-import { createFileRoute } from "@tanstack/react-router";
-
-import { dashboardQueryOptions } from "@/features/dashboard/services/queries";
-import { dashboardSearchSchema } from "@/features/dashboard/services/schemas";
-
 export const Route = createFileRoute("/dashboard/$dashboardId")({
 	validateSearch: dashboardSearchSchema,
 	loaderDeps({ search: { asOf } }) {
@@ -50,7 +31,11 @@ function DashboardPage() {
 }
 ```
 
-When a loader must await multiple queries, group them with `Promise.all`:
+## Seeding in Loaders
+
+In most cases, call `ensureQueryData` in the loader without `await`, `return`, or `void`. The loader starts the fetch without blocking page rendering, and `useSuspenseQuery` suspends on the same in-flight request.
+
+Await only when the route must not render until the data exists. Then await all of it together:
 
 ```tsx
 async loader({ context }) {

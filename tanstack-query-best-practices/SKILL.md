@@ -1,17 +1,19 @@
 ---
 name: tanstack-query-best-practices
-description: Apply user-defined TanStack Query best practices for React apps. Use when implementing, refactoring, or reviewing @tanstack/react-query usage, especially queryOptions, selectors, mutations, and TanStack Router loader and route-context integration.
+description: Use only when writing or editing @tanstack/react-query code, including queries, mutations, cache operations, and TanStack Router loader integration. NEVER use this skill for reading, explaining, or reviewing code, or for React or Router work that does not change TanStack Query code.
 ---
 
 # TanStack Query Best Practices
 
-Load only the reference file that matches the task:
+Load only the references the task needs; add another when the work crosses topics. Follow nearby code for routine choices.
 
-- `references/query-options.md` for `queryOptions`, query keys, query functions, query consumers, and query client operations.
-- `references/selectors.md` for `select`, selected subscriptions, selector function placement, and derived query slices.
-- `references/mutations.md` for `useMutation`, mutation options, invalidation, optimistic updates, and mutation side effects.
-- `references/mutation-state.md` for `mutationOptions`, `mutationKey`, `useMutationState`, `useIsMutating`, and observing mutation state outside the mutation owner.
-- `references/router.md` for TanStack Query usage with TanStack Router, including building concrete query options from `loaderDeps`, sharing them through route context, and handling loader query promises.
-- `references/dependent-queries.md` for `enabled`, conditional queries, dependent queries, required query inputs, and modal/drawer-gated fetching.
-- `references/suspense-error-handling.md` for Suspense query errors, route error boundaries, query reset behavior, retries, and `router.invalidate()`.
-- `references/infinite-queries.md` for `infiniteQueryOptions`, `useSuspenseInfiniteQuery`, page params, pagination cursors, and infinite query invalidation.
+Examples use `function` declarations for named functions and method shorthand for function-valued object properties.
+
+- `references/query-options.md`: `queryOptions`, query keys, query factories, consumers, `useSuspenseQueries`, query client operations.
+- `references/selectors.md`: `select`, selector placement, derived query slices.
+- `references/mutations.md`: `useMutation`, invalidation, optimistic updates, mutation callbacks.
+- `references/mutation-state.md`: `mutationOptions`, `mutationKey`, `useMutationState`, `useIsMutating`.
+- `references/router.md`: TanStack Router loaders, `loaderDeps`, query options in route context, Suspense consumers.
+- `references/dependent-queries.md`: `skipToken`, `enabled`, conditional and dependent queries, modal/drawer-gated fetching.
+- `references/suspense-error-handling.md`: Suspense errors, error boundaries, query reset, retries, `router.invalidate()`.
+- `references/infinite-queries.md`: `infiniteQueryOptions`, page params, cursors, infinite query invalidation.

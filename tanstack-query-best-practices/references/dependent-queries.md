@@ -1,51 +1,34 @@
 # Dependent Query Usage
 
-Use `enabled` when a query must wait for a required input. Include that input in
-the query key and guard the query function so its type remains safe.
+When a query must wait for a required input, return `skipToken` as the `queryFn` until the input exists. The query stays disabled, and `userId` narrows to `string` without a runtime guard. Include the input in the key.
 
 ```ts
+import { queryOptions, skipToken } from "@tanstack/react-query";
+
 export function userQueryOptions(userId?: string) {
 	return queryOptions({
 		queryKey: ["users", userId],
-		queryFn() {
-			if (!userId) throw new Error("userId is required");
-
-			return getUser(userId);
-		},
+		queryFn: userId
+			? () => getUser(userId)
+			: skipToken,
 	});
 }
-
-const userQuery = useQuery({
-	...userQueryOptions(userId),
-	enabled: Boolean(userId),
-});
 ```
 
-Use `useQuery` for queries that can be disabled. Reserve `useSuspenseQuery` for
-queries whose required inputs are already available.
-
-## Dependent On Another Query
-
-Pass the value produced by the first query into the dependent query options.
+`skipToken` does not work with `useSuspenseQuery`. Use `useQuery` for queries that can be skipped, and `useSuspenseQuery` only when the inputs are already available.
 
 ```ts
-const currentUserQuery = useSuspenseQuery(currentUserQueryOptions());
-const managerId = currentUserQuery.data.managerId;
-
-const managerQuery = useQuery({
-	...userQueryOptions(managerId),
-	enabled: Boolean(managerId),
-});
+// Waits for another query's result
+const managerId = useSuspenseQuery(currentUserQueryOptions()).data.managerId;
+const managerQuery = useQuery(userQueryOptions(managerId));
 ```
 
-## Modal And Drawer Queries
-
-Include visibility in `enabled` when a query should run only while its UI is
-open.
+For conditions that are not query inputs, such as UI visibility, add `enabled` on top of the factory:
 
 ```ts
-const userPreviewQuery = useQuery({
+// Runs only while a modal or drawer is open
+const previewQuery = useQuery({
 	...userQueryOptions(selectedUserId),
-	enabled: open && Boolean(selectedUserId),
+	enabled: open,
 });
 ```

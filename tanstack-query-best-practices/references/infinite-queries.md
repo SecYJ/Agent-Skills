@@ -1,7 +1,6 @@
 # Infinite Query Usage
 
-Use `infiniteQueryOptions` for cursor- or page-based lists that load more data
-from the same query family.
+Use `infiniteQueryOptions` for cursor- or page-based lists. Put every input that changes list identity (filters, search, sort, page size) in the key, but never `pageParam`, since all pages live in one cache entry.
 
 ```ts
 export function usersInfiniteQueryOptions(filters: UserFilters) {
@@ -18,61 +17,27 @@ export function usersInfiniteQueryOptions(filters: UserFilters) {
 }
 ```
 
-Include every stable input that changes the list identity in the query key,
-such as filters, search, sorting, and page size. Do not include `pageParam`;
-TanStack Query stores every page in the same infinite-query cache entry.
-
 ## Consumers
 
-Use `useSuspenseInfiniteQuery` for route data that can load immediately.
+Use `useSuspenseInfiniteQuery` when the data can load immediately, and `useInfiniteQuery` when it can be disabled.
 
 ```ts
-const usersQuery = useSuspenseInfiniteQuery(
-	usersInfiniteQueryOptions(filters),
-);
+const usersQuery = useSuspenseInfiniteQuery(usersInfiniteQueryOptions(filters));
 const users = usersQuery.data.pages.flatMap((page) => page.items);
+
+const drawerUsersQuery = useInfiniteQuery({ ...usersInfiniteQueryOptions(filters), enabled: open });
+const drawerUsers = drawerUsersQuery.data?.pages.flatMap((page) => page.items) ?? [];
 ```
 
-Use `useInfiniteQuery` when the query can be disabled.
+When several consumers need flattened data, share a `select` that keeps `pages` and `pageParams`:
 
 ```ts
-const usersQuery = useInfiniteQuery({
-	...usersInfiniteQueryOptions(filters),
-	enabled: open,
-});
-
-const users = usersQuery.data?.pages.flatMap((page) => page.items) ?? [];
-```
-
-## Derived Data
-
-When multiple consumers need flattened data, use a shared `select` function.
-Keep `pages` and `pageParams` in the result so infinite-query metadata remains
-available.
-
-```ts
-type UsersPageResult = Awaited<ReturnType<typeof getUsers>>;
-
-function selectFlattenedUsers(data: {
-	pages: UsersPageResult[];
-	pageParams: unknown[];
-}) {
+function selectFlattenedUsers(data: InfiniteData<UsersPageResult, string | undefined>) {
 	return {
 		...data,
 		users: data.pages.flatMap((page) => page.items),
 	};
 }
-
-const { data } = useSuspenseInfiniteQuery({
-	...usersInfiniteQueryOptions(filters),
-	select: selectFlattenedUsers,
-});
 ```
 
-## Invalidation
-
-Invalidate through the same infinite-query options factory.
-
-```ts
-await queryClient.invalidateQueries(usersInfiniteQueryOptions(filters));
-```
+Invalidate through the same factory: `queryClient.invalidateQueries(usersInfiniteQueryOptions(filters))`.

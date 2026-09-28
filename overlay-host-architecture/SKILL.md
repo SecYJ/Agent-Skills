@@ -1,81 +1,48 @@
 ---
 name: overlay-host-architecture
-description: Consolidate duplicated dialog, drawer, modal, side-panel, and similar overlay shells into a feature-owned Overlay Host while keeping differing content separate. Use when implementing or refactoring overlays that repeat their outer infrastructure across content views; adapt to the project's existing framework and primitives.
+description: Consolidate duplicated dialog, drawer, modal, or side-panel shells into one feature-owned Overlay Host with swappable content. Use when implementing or refactoring overlays that repeat the same outer infrastructure.
 ---
 
 # Overlay Host Architecture
 
-Solve duplicated overlay infrastructure with the smallest feature-owned architecture that remains easy to read. The primary pattern is one stable outer host with replaceable or selectable content.
+One stable outer host, replaceable inner content. Follow the project's existing framework, primitives, and state patterns; do not introduce a specific library.
 
-Do not bind the implementation to a particular UI framework, state library, dialog library, or routing mechanism. Follow the current project's stack and conventions.
+## Inspect First
 
-## Work From Evidence Without Repeated Questions
+Find every related overlay and compare the outer layer: mounting/portal, backdrop, container, size and position, animation, close lifecycle, keyboard, focus, and accessibility semantics. Separate what is truly shared from what varies by content.
 
-Inspect the relevant code before implementing:
+Decide from this evidence and proceed. Ask only when a product or behavior choice cannot be inferred and a wrong guess would be risky.
 
-- Find every related dialog, drawer, modal, side panel, or overlay view.
-- Compare their outer structure and behavior, including the backdrop, portal or equivalent mounting mechanism, container, dimensions, positioning, animation, close lifecycle, keyboard handling, focus behavior, and accessibility semantics.
-- Identify what is truly shared and what varies by content or workflow state.
-- Inspect nearby project primitives and existing state patterns before introducing anything new.
-
-Make the architecture decision from this evidence and continue. Do not ask the user to answer a standard checklist whenever the skill triggers. Ask only when a material product or behavior choice cannot be discovered from the code or request and making an assumption would be risky.
-
-## Prefer an Overlay Host for Duplicated Shells
-
-When related overlays repeat substantially the same outer layer and differ mainly in content, consolidate that outer layer into one feature-owned Overlay Host:
+## The Pattern
 
 ```text
-Overlay Host
-|-- Shared outer infrastructure
+Overlay Host   (shared outer infrastructure)
 `-- Current Content
     |-- Content A
     |-- Content B
     `-- Content C
 ```
 
-The host owns the concerns common to all content views:
+- **Host owns**: mounting, backdrop and outside clicks, container, dimensions and responsive layout, transitions, open/close/escape, focus, and accessibility.
+- **Content owns**: its own UI, actions, data, and validation.
+- Switch content with the simplest mechanism the project already uses.
+- Keep the host mounted across content changes; do not rebuild the shell per view.
 
-- mounting or portal behavior
-- backdrop and outside interaction
-- dialog, drawer, modal, or panel container
-- shared dimensions, positioning, and responsive behavior
-- animation and transition lifecycle
-- open, close, escape, focus, and accessibility behavior
+## Scope
 
-Content views own only their content-specific UI, actions, data, validation, and behavior. Switch, inject, compose, or route content using the simplest mechanism already natural to the project.
+- Scope the host to the feature or flow, not the whole app.
+- If overlays differ materially in role, positioning, animation, or lifecycle, use separate hosts instead of a heavily configurable one.
+- A single simple overlay needs no host.
 
-Keep the host mounted while content changes when that preserves shared lifecycle, focus, animation, or state. Do not recreate the full outer overlay for every internal view.
+## State
 
-## Keep the Host Appropriately Scoped
+- Prefer local state, props, or composition. Content switching alone does not justify a store, context, or router.
+- Add feature-scoped shared state only when content views coordinate state or it must survive transitions; keep it per-instance so separate overlays do not share state.
+- Do not pull app-wide state into the host.
 
-Prefer a host owned by the feature or related flow. Do not turn it into a universal application overlay framework merely because several features use dialogs or drawers.
+## Implementation
 
-Share only genuinely common outer behavior. If related overlays have materially different interaction semantics, accessibility roles, positioning, animation, or lifecycle, separate hosts may be clearer than a heavily configurable host.
-
-For a single simple overlay with no duplicated shell or content transitions, keep a normal local implementation. Do not introduce a host abstraction just because it is possible.
-
-## State and Content Coordination
-
-Changing content does not automatically require a store, context, router, or state machine. Prefer the project's simplest existing mechanism when local state, inputs, or direct composition remain readable.
-
-Use feature-scoped shared state only when multiple content views coordinate meaningful state or that state must survive content transitions. Keep it instance-scoped when the framework and project support that pattern so separate overlay instances do not leak state into each other. Choose the project's established provider, dependency-injection, store, or ownership mechanism rather than prescribing a particular library.
-
-Do not move application-wide state into the Overlay Host merely to make the overlay self-contained.
-
-## Boundaries and Abstractions
-
-Use separate units for meaningful content views or responsibilities. Do not build one large implementation dominated by conditional branches, but do not extract tiny pieces solely to reduce line count.
-
-Keep feature-specific logic near the content that uses it. Extract a utility only when it is reusable, represents a meaningful domain concept, substantially improves readability, or follows an established project abstraction. Prefer obvious code over clever generalization.
-
-## Implementation Behavior
-
-After inspecting the code:
-
-1. Identify the duplicated outer shell and the content-specific differences.
-2. Briefly explain the host boundary when it is not obvious.
-3. Implement one shared host and preserve focused content ownership.
-4. Avoid unrelated abstractions or framework changes.
-5. Validate opening and closing, content transitions, state retention or reset, keyboard and focus behavior, responsive layout, and instance isolation where relevant.
-
-This is a refactoring and ownership pattern, not a rigid template. Use it when it removes real shell duplication and makes the feature easier to understand.
+1. Extract the duplicated shell into the host; keep each content view as its own unit, without one big conditional component or needlessly tiny extractions.
+2. Keep feature logic next to the content that uses it.
+3. Avoid unrelated abstractions or framework changes.
+4. Verify open/close, content transitions, state retention or reset, keyboard and focus, responsive layout, and instance isolation.

@@ -1,95 +1,99 @@
 ---
 name: zustand-context
-description: Scaffold a scoped Zustand store with React Context provider. Use when creating a new feature context/provider, setting up scoped state management, or when the user asks to create a provider with Zustand. Trigger on phrases like "scoped context", "zustand context", "scoped store".
+description: Scaffold a scoped Zustand store exposed through a React Context provider. Use when creating a feature-scoped store, provider, or "zustand context".
 argument-hint: <FeatureName> [output-path]
 ---
 
 # Zustand Scoped Context Provider
 
-Generate a scoped Zustand store + React Context provider following the project's established pattern.
+Generate one `.tsx` file containing a per-instance Zustand store and its provider.
 
 ## Input
 
-- `$ARGUMENTS[0]` — **Feature name** in PascalCase (e.g. `Checkout`, `Profile`, `TransactionHistory`)
-- `$ARGUMENTS[1]` — (optional) Output file path. If omitted, ask the user where to place the file.
+- `$ARGUMENTS[0]`: feature name in PascalCase, e.g. `Checkout`.
+- `$ARGUMENTS[1]`: optional output path. If omitted, place it beside the feature following nearby conventions; ask only if there is no clear location.
 
-If the user only gives a feature name without specifying state fields, generate a minimal scaffold with one example state field (`isLoading: boolean`) and a corresponding action (`setIsLoading`) so the structure is clear and ready to be filled in. Add a `TODO` comment above the state type prompting the user to replace with real fields.
+If no state fields are given, scaffold one example field `isLoading: boolean` with a `setIsLoading` action and a `TODO` above the state type.
 
 ## Template
-
-Generate a single `.tsx` file with this exact structure. Every section matters — do not skip or reorder any part.
 
 ```tsx
 import { createContext, type ReactNode, use, useState } from "react"
 import { createStore, useStore } from "zustand"
 
-// TODO: Replace with actual state fields and actions for this feature
+// TODO: Replace with this feature's state and actions
 type {{Name}}State = {
-  // ... state fields here
+  isLoading: boolean
   actions: {
-    // ... action methods here
+    setIsLoading: (isLoading: boolean) => void
   }
 }
 
 type {{Name}}Store = ReturnType<typeof create{{Name}}Store>
 
-type {{Name}}ContextValue = {
-  store: {{Name}}Store
-}
-
 type {{Name}}ProviderProps = {
   children: ReactNode
-  // Add optional initialX props here if the provider needs initial values
 }
 
-const create{{Name}}Store = (/* accept initial value params here if needed */) => {
+function create{{Name}}Store() {
   return createStore<{{Name}}State>()((set) => ({
-    // ... initial state values
+    isLoading: false,
     actions: {
-      // ... action implementations using set()
+      setIsLoading(isLoading) {
+        set({ isLoading })
+      },
     },
   }))
 }
 
 const {{Name}}Context = createContext<{{Name}}Store | null>(null)
 
-export const {{Name}}Provider = ({ children }: {{Name}}ProviderProps) => {
+export function {{Name}}Provider({ children }: {{Name}}ProviderProps) {
   const [store] = useState(create{{Name}}Store)
 
   return <{{Name}}Context value={store}>{children}</{{Name}}Context>
 }
 
-export const use{{Name}} = <T,>(selector: (state: {{Name}}State) => T) => {
+export function use{{Name}}<T>(selector: (state: {{Name}}State) => T) {
   const store = use({{Name}}Context)
 
-  if (!context) throw new Error("{{Name}}Provider is being used outside of {{Name}}Context")
+  if (!store) throw new Error("use{{Name}} must be used within {{Name}}Provider")
 
   return useStore(store, selector)
 }
 ```
 
-## Conventions to follow exactly
+## Conventions
 
-- **Actions inside state**: all mutators live under an `actions` object so consumers destructure cleanly: `const { setX } = useFeature(s => s.actions)`
-- **`use()` from React 19**: use `use(Context)`, NOT `useContext(Context)`
-- **JSX `value=` prop**: write `<Context value={{ store }}>`, NOT `<Context.Provider value={{ store }}>`
-- **`useState` for store creation**: `const [store] = useState(createStore)` — never `useRef`
-- **Selector-only hook**: the public hook always requires a selector `(state: State) => T` for render optimization
-- **Null context default**: `createContext<ContextValue | null>(null)` with a runtime error guard
-- **Named exports only**: `export const`, no default exports
-- **No barrel files**: do not create an `index.ts` unless asked
-- **Store type alias**: always `type XStore = ReturnType<typeof createXStore>`
+- Use `function` declarations for the factory, provider, and hook, and method shorthand for actions.
+- Put all mutators under `actions` so consumers read them in one stable selection: `const { setX } = useX((s) => s.actions)`.
+- React 19 APIs: `use(Context)` and `<Context value={...}>`, not `useContext` or `<Context.Provider>`.
+- Create the store with `useState(factory)`, never `useRef`.
+- The public hook always takes a selector. For selectors returning new objects or arrays, use `useShallow`.
+- Named exports only; no barrel `index.ts` unless asked.
 
-## When the user provides state fields
+## Custom State
 
-If the user describes specific state (e.g. "I need `currentStep`, `formData`, and `errors`"), wire them into the type and store factory with matching actions. Use your judgment for action names — follow the `setX` convention for simple setters. For complex state transitions, name the action after what it does (e.g. `advanceStep`, `resetForm`).
+Wire requested fields into the state type and factory. Use `setX` for plain setters and intent names (`advanceStep`, `resetForm`) for real transitions.
 
-## When initial values are needed
+## Initial Values
 
-If the provider needs to accept initial values as props (like `LoginProvider` does with `initialView`):
+Only when the provider needs initial values as props:
 
-1. Add the initial value props to `{{Name}}ProviderProps` (with `?` optional marker and defaults)
-2. Accept them in `create{{Name}}Store` via an `Omit<{{Name}}ProviderProps, "children">` parameter
-3. Pass them through in the `useState` initializer
+```tsx
+type {{Name}}ProviderProps = {
+  children: ReactNode
+  initialStep?: number
+}
 
-Only do this if the user asks for it or it's clearly needed. The simpler pattern (no initial props, like `RegisterProvider`) is the default.
+function create{{Name}}Store({ initialStep = 0 }: Omit<{{Name}}ProviderProps, "children">) {
+  return createStore<{{Name}}State>()((set) => ({ step: initialStep, /* ... */ }))
+}
+
+export function {{Name}}Provider({ children, ...initial }: {{Name}}ProviderProps) {
+  const [store] = useState(() => create{{Name}}Store(initial))
+  // ...
+}
+```
+
+Initial props are read once; later prop changes do not update the store.
